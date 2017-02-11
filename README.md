@@ -12,7 +12,7 @@ Kafkacat wrapper for Heroku Kafka. Takes Heroku env vars and runs kafkacat with 
 
 
 ### Optional
-`KAFKA_URL` - comma separated list of URLS. any :// prefix will be removed. You can also leave this blank and 
+`KAFKA_URL` - comma separated list of URLS. any `://` prefix will be removed. You can also leave this blank and use `-b` option.
 
 `HEROKU` - set this to a non-empty value if your ENV vars are formatted the same as Heroku. If blank, this script assumes base64 encoded environment variables.
 
