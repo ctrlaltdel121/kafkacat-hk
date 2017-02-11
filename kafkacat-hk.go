@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"io"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
@@ -36,10 +37,14 @@ func main() {
 	keyPipe := makePipeFromBytes(key)
 	defer keyPipe.Close()
 
-	cmdFields := sslArgs()
+	// start with SSL args
+	cmdFields := []string{"-X", "security.protocol=ssl", "-X", "ssl.ca.location=/dev/fd/3", "-X", "ssl.certificate.location=/dev/fd/4", "-X", "ssl.key.location=/dev/fd/5"}
+
+	// if url env is set, add -b option automatically
 	if os.Getenv("KAFKA_URL") != "" {
-		cmdFields = append(cmdFields, "-b", strings.Replace(os.Getenv("KAFKA_URL"), "kafka://", "", -1))
+		cmdFields = append(cmdFields, "-b", hostList(os.Getenv("KAFKA_URL")))
 	}
+	// append passthrough arguments
 	cmdFields = append(cmdFields, os.Args[1:]...)
 
 	cmd := exec.Command(exe, cmdFields...)
@@ -58,8 +63,18 @@ func main() {
 	}
 }
 
-func sslArgs() []string {
-	return []string{"-X", "security.protocol=ssl", "-X", "ssl.ca.location=/dev/fd/3", "-X", "ssl.certificate.location=/dev/fd/4", "-X", "ssl.key.location=/dev/fd/5"}
+// removes any URL protocol prefixes and just returns host:port, which is what kafkacat -b option expects
+func hostList(urlList string) string {
+	spl := strings.Split(urlList, ",")
+	var hosts []string
+	for _, s := range spl {
+		u, err := url.Parse(s)
+		if err != nil {
+			log.Fatalf("KAFKA_URL (%s) did not parse: %+v\n", s, err)
+		}
+		hosts = append(hosts, u.Host)
+	}
+	return strings.Join(hosts, ",")
 }
 
 func makePipeFromBytes(input []byte) *os.File {
